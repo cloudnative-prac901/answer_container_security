@@ -1,0 +1,19 @@
+# 非root実行Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: restricted-pod
+  namespace: k8s-secure
+spec:
+  securityContext:
+    runAsNonRoot: true      # 明示的にroot不可
+    seccompProfile:
+      type: RuntimeDefault  # Pod全体に適用
+  containers:
+  - name: app
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
