@@ -1,0 +1,10 @@
+# Role（namespace内のPod閲覧のみ許可）
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: role-readonly
+  namespace: k8s-defense
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
