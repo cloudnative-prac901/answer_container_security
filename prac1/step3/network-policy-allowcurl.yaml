@@ -1,0 +1,29 @@
+# network-policy-allowcurl.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-curl
+  namespace: k8s-defense
+spec:
+  podSelector:
+    matchLabels:
+      app: curl
+  policyTypes:
+  - Egress
+  egress:
+  # Nginxへの通信を許可
+  - to:
+    - podSelector:
+        matchLabels:
+          app: nginx
+    ports:
+    - protocol: TCP
+      port: 80
+  # DNS解決を許可
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
