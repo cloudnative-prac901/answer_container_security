@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl
+  namespace: k8s-defense
+  labels:
+    app: curl
+spec:
+  serviceAccountName: sa-admin
+  containers:
+  - name: curl
+    image: curlimages/curl
+    command: ["sleep", "3600"]
