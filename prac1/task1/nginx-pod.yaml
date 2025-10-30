@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  namespace: k8s-defense
+  labels:
+    app: nginx
+spec:
+  serviceAccountName: sa-admin  #脆弱なSAを付与
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 80
