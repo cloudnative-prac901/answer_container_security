@@ -1,0 +1,13 @@
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: binding-readonly
+  namespace: k8s-defense
+subjects:
+- kind: ServiceAccount
+  name: sa-limited
+roleRef:
+  kind: Role
+  name: role-readonly
+  apiGroup: rbac.authorization.k8s.io
