@@ -6,6 +6,7 @@ metadata:
   namespace: k8s-secure
 spec:
   securityContext:
+    runAsUser: 1000         # 非rootユーザー
     runAsNonRoot: true      # 明示的にroot不可
     seccompProfile:
       type: RuntimeDefault  # Pod全体に適用
