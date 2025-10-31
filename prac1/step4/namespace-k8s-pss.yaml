@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: k8s-secure
+  name: k8s-pss
   labels:
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: baseline
