@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: root-pod
-  namespace: k8s-secure
+  namespace: k8s-pss
 spec:
   containers:
   - name: root
