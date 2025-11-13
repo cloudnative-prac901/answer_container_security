@@ -1,0 +1,15 @@
+# Allow from prodcutpage to details
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-productpage-to-details
+  namespace: book-info
+spec:
+  selector:
+    matchLabels:
+      app: details   # 対象：details
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/book-info/sa/bookinfo-productpage"]
