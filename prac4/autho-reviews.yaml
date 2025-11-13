@@ -1,0 +1,15 @@
+# Allow from prodcutpage to reviews
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-productpage-to-reviews
+  namespace: book-info
+spec:
+  selector:
+    matchLabels:
+      app: reviews   # 対象：reviews
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/book-info/sa/bookinfo-productpage"]
