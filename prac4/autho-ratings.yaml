@@ -1,0 +1,15 @@
+# Allow from reviews to ratings
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-reviews-to-ratings
+  namespace: book-info
+spec:
+  selector:
+    matchLabels:
+      app: ratings   # 対象：ratings
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/book-info/sa/bookinfo-reviews"]
