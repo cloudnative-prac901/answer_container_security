@@ -1,0 +1,118 @@
+## 4-1　Secret/Podのデプロイ
+# Namespace作成
+$ kubectl create secret namespace k8s-defense
+
+# Secret作成
+$ kubectl create secret generic api-key-secret  -n k8s-defense \
+  --from-literal=API_KEY=1234-SECRET-5678
+
+# Podのデプロイ
+$ kubectl apply -f secret-test-pod.yaml
+
+# PodへのSecret情報反映確認（環境変数、ボリュームマウント）
+$ kubectl exec -n k8s-defense secret-test-pod -- env | grep API_KEY
+$ kubectl exec -n k8s-defense secret-test-pod -- cat /mnt/secrets/API_KEY
+
+# Secret情報の暗号化確認
+$ kubectl get secret api-key-secret -n k8s-defense -o yaml
+
+# APIキーの復号化（base64）
+$ echo “<暗号化されたキー>" | base64 --decode
+
+###########
+
+## 4-2 Istioインストール
+# Kyvernoアンインストール
+$ helm uninstall kyverno -n kyverno
+$ kubectl delete namespace kyverno --ignore-not-found
+
+# Kyverno Webhookの削除
+$ kubectl get mutatingwebhookconfigurations
+$ kubectl delete mutatingwebhookconfiguration <リソース名> --ignore-not-found
+
+$ kubectl get validatingwebhookconfigurations
+$ kubectl delete validatingwebhookconfiguration <リソース名>  --ignore-not-found
+
+# 全リソースの確認
+$ kubectl get all -A
+
+# istioインストール（istio-1.27.3）
+$ curl -L https://istio.io/downloadIstio | sh -
+$ cd istio-1.27.3
+
+istio-1.27.3 $ export PATH=$PWD/bin:$PATH
+istio-1.27.3 $ istioctl install --set profile=demo -y
+
+# istioリソース確認
+istio-1.27.3 $ kubectl get namespace istio-system
+istio-1.27.3 $ kubectl get all -n istio-system
+
+# book-infoネームスペース作成 
+istio-1.27.3 $ kubectl create namespace book-info
+istio-1.27.3 $ kubectl label namespace book-info istio-injection=enabled
+
+# book-infoアプリケーションのアプライ
+istio-1.27.3 $ kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml -n book-info
+istio-1.27.3 $ kubectl apply -f samples/bookinfo/networking/bookinfo-gateway.yaml -n book-info
+
+# book-infoアプリケーションの状態確認
+istio-1.27. 3 $ kubectl get pods -n book-info -w    # 6つのPodが2/2で起動すること
+istio-1.27. 3 $ kubectl get gateway -n book-info
+istio-1.27. 3 $ kubectl get virtualservice -n book-info
+
+# book-infoの内部通信確認
+istio-1.27.3 $ kubectl exec -n book-info "$(kubectl get pod -n book-info \
+  -l app=ratings -o jsonpath='{.items[0].metadata.name}')"  \
+  -c ratings -- curl -s productpage:9080/productpage | grep -o "<title>.*</title>"
+
+# book-infoの外部通信確認 
+$ ロードバランサー > CLB > DNS名の確認
+$ ブラウザーから検索（http://<CLBのDNS名>/productpage）  
+
+###########
+  
+## 4-3 mTLS通信による認証
+
+# 外部Podからの通信確認
+$ kubectl run tmp --rm -it --image=curlimages/curl:8.6.0 -- sh
+$ curl -v http://details.book-info:9080/details/0
+
+# PeerAuthenticationの適用 
+$ kubectl apply -f  peer-auth.yaml
+
+###########
+  
+## 4-4 AuthorizationPolicyによる認可
+
+# 経路A（正規）：reviews v2 → ratings 通信（HTTP 200 OK）
+$ kubectl exec -n book-info $(kubectl get pod -n book-info \
+  -l app=reviews,version=v2 -o jsonpath='{.items[0].metadata.name}')  \
+  -c reviews -- curl -s -o /dev/null -w \
+  "HTTP %{http_code}\n" http://ratings:9080/ratings/0
+
+# 経路B（他）：reviews v2 → details 通信（HTTP 200 OK）
+$ kubectl exec -n book-info $(kubectl get pod -n book-info \
+  -l app=reviews,version=v2 -o jsonpath='{.items[0].metadata.name}') \
+  -c reviews -- curl -s -o /dev/null \
+  -w "HTTP %{http_code}\n" http://details:9080/details/0
+
+# 経路C（正規）：productpage → details 通信（200OK）
+$ kubectl exec -n book-info $(kubectl get pod -n book-info \
+  -l app=productpage -o jsonpath='{.items[0].metadata.name}') \
+  -c productpage -- python -c "import requests; print(requests.get('http://details:9080/details/0').status_code)"
+
+# 経路D（他）：Details → reviews への通信確認（200OK）
+$ kubectl exec -n book-info $(kubectl get pod -n book-info \
+  -l app=details -o jsonpath='{.items[0].metadata.name}') \
+  -c details -- ruby -rnet/http -e "uri=URI('http://reviews:9080/reviews/1'); res=Net::HTTP.get_response(uri); puts res.code"
+
+# AuthorizationPolicyの適用
+$ kubectl apply –f autho-deny-all.yaml
+$ kubectl apply –f autho-productpage.yaml
+$ kubectl apply –f autho-reviews.yaml
+$ kubectl apply –f autho-ratings.yaml
+$ kubectl apply –f autho-details.yaml
+
+# AuthorizationPolicyの設定確認
+$ kubectl get authorizationpolicy -n book-info
+
