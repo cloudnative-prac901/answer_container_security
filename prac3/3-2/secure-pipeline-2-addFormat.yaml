@@ -12,7 +12,7 @@ permissions:
   security-events: write  # CodeQL用
 
 env:
-  AWS_REGION: ap-northeast-2
+  AWS_REGION: ap-northeast-1
   ECR_REPOSITORY: sample-app
   IMAGE_TAG: latest
 
