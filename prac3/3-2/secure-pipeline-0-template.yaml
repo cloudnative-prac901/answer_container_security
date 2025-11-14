@@ -1,0 +1,19 @@
+name: Secure DevSecOps Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write  # OIDC用
+  contents: read
+  security-events: write  # CodeQL用
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: sample-app
+  IMAGE_TAG: latest
+
+jobs:
