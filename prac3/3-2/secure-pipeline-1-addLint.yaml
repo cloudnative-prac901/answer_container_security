@@ -1,0 +1,37 @@
+name: Secure DevSecOps Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write  # OIDC用
+  contents: read
+  security-events: write  # CodeQL用
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: sample-app
+  IMAGE_TAG: latest
+
+jobs:
+# ===== 1. Lint（Ruff）===== #
+  lint:
+    name: Ruff Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff Lint
+        run: ruff check . || true  # ruff が failed を返しても後続に進む
