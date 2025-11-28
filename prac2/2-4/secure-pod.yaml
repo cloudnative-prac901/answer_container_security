@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+  namespace: k8s-defense
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000    # 非rootユーザー起動
+    seccompProfile:    # seccompプロファイル適用
+      type: RuntimeDefault
+  containers:
+  - name: demo
+    image: alpine
+    command: ["sleep", "infinity"]
+    securityContext:
+      allowPrivilegeEscalation: false # 特権昇格拒否
+      capabilities:
+        drop: ["ALL"]    # capabilityのドロップ
