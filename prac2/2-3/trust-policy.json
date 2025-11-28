@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "<OIDCプロバイダーARN>"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "<OIDCプロバイダー名>:aud": "sts.amazonaws.com",
+          "<OIDCプロバイダー名>:sub": "system:serviceaccount:kyverno:kyverno-admission-controller"
+        }
+      }
+    }
+  ]
+}
