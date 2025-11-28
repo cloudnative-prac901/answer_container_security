@@ -1,0 +1,83 @@
+## Cosign＋Kyverno
+
+# Helmインストール
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+$ helm version
+$ helm repo add kyverno https://kyverno.github.io/kyverno/
+$ helm repo update
+
+# Kyvernoインストール（ver3.4.4） 
+$ kubectl create namespace kyverno
+$ helm install kyverno kyverno/kyverno  --namespace kyverno  --version v3.4.4 \
+   --set installCRDs=true  --set admissionController.generateSelfSignedCert=true
+$ kubectl get pod -n kyverno
+
+## eksctlインストール
+# 最新版の eksctl をダウンロード
+$ curl --silent --location\
+    "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" \
+    | tar xz -C /tmp
+  
+# 実行パスへ移動 CloudShellユーザー領域
+$ sudo mv /tmp/eksctl /usr/local/bin
+
+# 実行権限を付与
+$ sudo chmod +x /usr/local/bin/eksctl
+
+# バージョン確認
+$ eksctl version
+
+## EKS環境設定
+# 1. ノードのIAMロール確認
+$ eksctl get nodegroup --cluster cs-cluster
+　# → Kubernetesクラスターの<NODEGROUP>を確認
+$ aws eks describe-nodegroup --cluster-name cs-cluster  --nodegroup-name <NODEGROUP> \  --region ap-northeast-1 \  --query "nodegroup.nodeRole" --output text
+　# → ノードに付与されているIAMロール（出力例の太字部分）を確認
+　#　出力例：　arn:aws:iam::<ACCOUNT_ID>:role/eksctl-cs-cluster-nodegroup-lab-no-NodeInstanceRole-XXXXXXXXX
+
+# 2. ECR読み取り専用ポリシーの付与
+$ aws iam attach-role-policy  --role-name <IAMロール名> \
+  --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+
+# 3. Kyverno用の IAM ポリシーの作成
+$ nano ecr-read-policy.json    # IAMポリシー用のJSONファイルを準備（次ページ参照）
+$ aws iam create-policy  --policy-name PolicyControllerECRAccess  --policy-document file://ecr-read-policy.json
+
+# 4. IRSA連携の有効化（OIDCプロバイダー）
+$ eksctl utils associate-iam-oidc-provider  --region=ap-northeast-1 \
+  --cluster=cs-cluster  --approve
+
+# 5. ServiceAccountの信頼ポリシー作成
+$ aws iam list-open-id-connect-providers　→ OIDCプロバイダーARN（赤下線）、OIDCプロバイダー名（緑下線）を確認
+    # 出力例： "OpenIDConnectProviderList": [ 
+    #        "Arn": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/oidc.eks.<REGION>.amazonaws.com/id/xxxxxxxxxx"
+
+# 6. Kyverno用IAMロールの作成IAMポリシー適用
+$ aws iam create-role  --role-name KyvernoEcrAccessRole \
+  --assume-role-policy-document file://trust-policy.json
+
+$ aws iam attach-role-policy  --role-name KyvernoEcrAccessRole \
+  --policy-arn arn:aws:iam::<ACCOUNT_ID>:policy/PolicyControllerECRAccess
+
+# 7. ServiceAccount 作成
+$ eksctl create iamserviceaccount  --name kyverno-admission-controller  --namespace kyverno \
+  --cluster cs-cluster  --approve --override-existing-serviceaccounts \ --attach-policy-arn arn:aws:iam::<ACCOUNT_ID>:policy/PolicyControllerECRAccess
+
+# 8. ServiceAccount アノテーション付与
+$ kubectl annotate sa kyverno-admission-controller  -n kyverno \
+  eks.amazonaws.com/role-arn=arn:aws:iam::<ACCOUNT_ID>:role/KyvernoEcrAccessRole
+
+# 9. Deployment（Kyverno Admission Controller ）の再起動
+$ kubectl rollout restart deployment kyverno-admission-controller -n kyverno
+
+## Kyvernoの署名検証ポリシー設定
+# 署名ポリシー設定
+$ cat cosign.pub
+$ kubectl apply -f verify-signed-images.yaml
+
+## デプロイ確認 
+# 署名済イメージ（デプロイ成功）
+$ kubectl run test-ok --image=<リポジトリURI>:latest --restart=Never
+
+# 未署名イメージ（デプロイ失敗）
+$ kubectl run test-ng --image=<リポジトリURI>:unsigned --restart=Never
