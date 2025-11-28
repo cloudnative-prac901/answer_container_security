@@ -1,0 +1,9 @@
+# 動作確認（堅牢なPod）
+$ kubectl exec -n k8s-defense secure-pod -- id
+$ kubectl exec -n k8s-defense secure-pod -- unshare --user --mount
+$ kubectl exec -n k8s-defense secure-pod -- ping -c 2 8.8.8.8
+
+# 動作確認（脆弱なPod）
+$ kubectl exec -n k8s-defense insecure-pod -- id
+$ kubectl exec -n k8s-defense insecure-pod -- unshare --user --mount
+$ kubectl exec -n k8s-defense insecure-pod -- ping -c 2 8.8.8.8
