@@ -1,0 +1,33 @@
+## 脆弱性スキャン
+# Trivyインストール
+$ curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+$ trivy version
+
+# Trivyのデータベース保存先変更
+$ mkdir -p /tmp/trivy-db
+$ export TRIVY_CACHE_DIR=/tmp/trivy-db
+
+# イメージスキャン
+$ docker pull nginx:latest
+$ trivy image nginx:latest
+
+# 自分で堅牢なイメージ作成およびスキャン
+# Dockerfileを自分で作成
+$ docker build -t cs-app:latest .              # 本解答では、cs-app:latest  でイメージを作成します。
+$ trivy image cs-app:latest
+$ docker image ls
+
+## ECRを利用する場合
+# ECRへのログイン
+$ aws ecr get-login-password --region $REGION \
+  | docker login --username AWS --password-stdin \
+    $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$REGION.amazonaws.com
+
+# リポジトリ作成
+$ aws ecr create-repository \
+  --repository-name cs-app --region "$REGION"
+  --image-scanning-configuration scanOnPush=true
+
+# イメージをECRにプッシュ
+$ docker tag cs-app:latest xxx.dkr.ecr.ap-northeast-1.amazonaws.com/cs-app:latest
+$ docker push xxx.dkr.ecr.ap-northeast-1.amazonaws.com/cs-app:latest
