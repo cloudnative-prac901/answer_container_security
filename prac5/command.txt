@@ -1,0 +1,85 @@
+## 5-1 Prometheus / Grafana / Kialiのインストール
+
+# namespace作成
+$ kubectl create namespace observability
+
+# Helmインストール
+$ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+$ helm version
+  
+# Helmリポジトリ追加
+$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+$ helm repo add grafana https://grafana.github.io/helm-charts
+$ helm repo add kiali https://kiali.org/helm-charts
+$ helm repo update
+
+# Prometheusのインストール
+$ helm install prometheus prometheus-community/prometheus -n observability \
+  --set alertmanager.enabled=false  --set server.persistentVolume.enabled=false \
+  --set server.statefulSet.enabled=false
+
+# Grafanaのインストール 
+$ helm install grafana grafana/grafana -n observability \
+    --set adminPassword='admin'  --set service.type=LoadBalancer
+
+# Kialiのインストール
+$ helm install kiali kiali/kiali-server -n observability  --set auth.strategy=anonymous 
+  --set external_services.prometheus.url=http://prometheus-server.observability.svc.cluster.local \
+  --set deployment.service_type=LoadBalancer
+
+#################################
+## 5-2 Kialiトラフィックグラフによる可視化
+# Kialiへの接続
+$ kubectl get service -n observability
+
+# KialiのServiceをパッチ
+$ kubectl patch svc kiali -n observability -p '{"spec":{"type":"LoadBalancer"}}'
+
+# Kialiへのアクセス（ブラウザ）
+http://<EXTERNAL-IP>:20001
+
+#################################
+## 5-3 Kialiを用いた通信分析
+# パターン１　定常負荷
+$ hey -z 60s -q 5 -c 10 http://<EXTERNAL-IP>/productpage
+
+# パターン２　高負荷
+$ hey -z 60s -q 40 -c 40 http://<EXTERNAL-IP>/productpage
+
+# パターン３　非認証Pod通信 
+$ kubectl run out-mesh --rm -it -n book-info --image=curlimages/curl  -- sh
+~ $ curl -v http://ratings.book-info.svc.cluster.local:9080/ratings/1
+
+# パターン４　非認可経路の通信
+$ kubectl exec deploy/reviews-v2 -n book-info -it --  curl -v http://details:9080/details/1
+
+# パターン５　Fault injection
+$ kubectl apply -f fault-injection.yaml
+
+#################################
+## 5-4 Grafanaダッシュボード作成
+# パネル１：ノード単位のCPU使用率（%）
+Data source：　Prometheus
+Metrics：　node_cpu_seconds_total（ノード単位の各コア、各モードのCPU使用時間の累計値 - 秒）
+PromQL：　100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance) * 100)
+Visualization：　Gauge
+
+# パネル２：istio の各サービスに対するリクエスト遅延のp90（ms）
+Data source：　Prometheus
+Metrics：　 istio_request_duration_milliseconds_bucket （istio-proxyが計測したリクエスト遅延のヒストグラム）
+PromQL：　histogram_quantile(0.90, sum(rate(istio_request_duration_milliseconds_bucket[5m])) by (le, destination_service))
+Visualization：　Time series
+
+# パネル３：productpageサービスへのリクエスト数/秒（rps）
+Data source：　Prometheus
+Metrics：　istio_requests_total（Istio-proxyが処理したリクエスト数 – 個）
+PromQL：　sum(rate(istio_requests_total{destination_service="productpage"}[5m]))
+Visualization：　Time series
+
+# パネル４：クラスター全体のフェーズ別Pod起動状態（個）
+Data source：　Prometheus
+Metrics：　kube_pod_status_phase（Podの起動状態）
+PromQL：　sum by (phase) (kube_pod_status_phase)
+Visualization：　Stat
+
+  
