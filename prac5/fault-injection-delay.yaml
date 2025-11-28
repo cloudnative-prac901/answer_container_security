@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ratings
+  namespace: book-info
+spec:
+  hosts:
+  - ratings
+  http:
+  - fault:
+      delay:
+        fixedDelay: 5s
+        percentage:
+          value: 100
+    route:
+    - destination:
+        host: ratings
