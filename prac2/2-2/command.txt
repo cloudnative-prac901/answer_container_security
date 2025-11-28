@@ -1,0 +1,27 @@
+## 2-2　Cosign
+
+# Cosignインストール 
+$ curl -LO "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-darwin-arm64"
+$ chmod +x cosign-darwin-arm64
+$ sudo mv cosign-darwin-arm64 /usr/local/bin/cosign
+$ cosign version
+
+# 秘密鍵・公開鍵の作成
+$ cosign generate-key-pair
+$ ls -la cosign.*
+
+## イメージへの署名
+# ローカルイメージに署名する場合（例：cs-app:latest ）
+$ cosign sign --key cosign.key cs-app:latest
+
+# ECR上のイメージに署名する場合
+$ cosign sign --key cosign.key xxx.dkr.ecr.ap-northeast-1.amazonaws.com/cs-app:latest
+
+## イメージの検証
+# ローカルイメージに署名する場合（例　myapp:latest ）
+$ cosign verify --key cosign.pub myapp:latest
+
+# ECR上のイメージに署名する場合
+$ cosign verify --key cosign.pub <ECRリポジトリURI>/myapp:latest
+
+  
