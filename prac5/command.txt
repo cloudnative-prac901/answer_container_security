@@ -23,7 +23,7 @@ $ helm install grafana grafana/grafana -n observability \
     --set adminPassword='admin'  --set service.type=LoadBalancer
 
 # Kialiのインストール
-$ helm install kiali kiali/kiali-server -n observability  --set auth.strategy=anonymous 
+$ helm install kiali kiali/kiali-server -n observability  --set auth.strategy=anonymous \
   --set external_services.prometheus.url=http://prometheus-server.observability.svc.cluster.local \
   --set deployment.service_type=LoadBalancer
 
