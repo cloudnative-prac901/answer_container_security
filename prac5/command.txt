@@ -73,7 +73,7 @@ Visualization：　Time series
 # パネル３：productpageサービスへのリクエスト数/秒（rps）
 Data source：　Prometheus
 Metrics：　istio_requests_total（Istio-proxyが処理したリクエスト数 – 個）
-PromQL：　sum(rate(istio_requests_total{destination_service="productpage"}[5m]))
+PromQL：　sum(rate(istio_requests_total{destination_service="productpage.book-info.svc.cluster.local"}[5m]))
 Visualization：　Time series
 
 # パネル４：クラスター全体のフェーズ別Pod起動状態（個）
